@@ -46,6 +46,16 @@ const FIELDS: Array<{ key: keyof CharacterDraft; label: string; long?: boolean }
   { key: "characterArc", label: "Character arc", long: true },
 ];
 
+const FIELD_LABELS = new Map(FIELDS.map((field) => [field.key, field.label]));
+
+type ImproveMode = "improve" | "complex" | "backstory" | "arc";
+
+interface PendingPatch {
+  characterId: string;
+  mode: ImproveMode;
+  patch: Partial<CharacterDraft>;
+}
+
 const EMPTY: CharacterDraft = FIELDS.reduce(
   (accumulator, field) => ({ ...accumulator, [field.key]: "" }),
   {} as CharacterDraft,
@@ -63,6 +73,7 @@ export function CharactersWorkspace({
   const toast = useToast();
   const [characters, setCharacters] = useState<CharacterRecord[]>(initialCharacters);
   const [pending, setPending] = useState<CharacterDraft[] | null>(null);
+  const [pendingPatch, setPendingPatch] = useState<PendingPatch | null>(null);
   const [relationships, setRelationships] = useState<Array<{ character: string; relationship: string }> | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -114,17 +125,30 @@ export function CharactersWorkspace({
     toast("Character deleted");
   }
 
-  async function improve(character: CharacterRecord, mode: "improve" | "complex" | "backstory" | "arc") {
+  async function improve(character: CharacterRecord, mode: ImproveMode) {
     setBusy(`${character.id}:${mode}`);
     try {
       const patch = await aiAction<Partial<CharacterDraft>>(projectId, "improveCharacter", {
         character,
         mode,
       });
-      await updateCharacter(character.id, patch);
-      toast("Character updated — edit anything you disagree with", "success");
+      setPendingPatch({ characterId: character.id, mode, patch });
     } catch (error) {
       toast(error instanceof Error ? error.message : "AI request failed", "error");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function acceptPatch() {
+    if (!pendingPatch) return;
+    setBusy(`${pendingPatch.characterId}:accept`);
+    try {
+      await updateCharacter(pendingPatch.characterId, pendingPatch.patch);
+      setPendingPatch(null);
+      toast("Character updated", "success");
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "Could not save character", "error");
     } finally {
       setBusy(null);
     }
@@ -290,6 +314,45 @@ export function CharactersWorkspace({
                 </div>
               ))}
             </div>
+
+            {pendingPatch && pendingPatch.characterId === character.id ? (
+              <div className="mt-4 rounded-lg border border-accent/20 bg-ink-850 p-3">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-xs uppercase tracking-widest text-accent">Suggested changes — not saved yet</p>
+                  <div className="flex gap-2">
+                    <button className="btn-primary" disabled={busy !== null} onClick={acceptPatch}>
+                      Accept
+                    </button>
+                    <button
+                      className="btn-ghost"
+                      disabled={busy !== null}
+                      onClick={() => improve(character, pendingPatch.mode)}
+                    >
+                      Regenerate
+                    </button>
+                    <button className="btn-quiet" onClick={() => setPendingPatch(null)}>
+                      Discard
+                    </button>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  {Object.entries(pendingPatch.patch).map(([key, value]) => (
+                    <div key={key}>
+                      <p className="label">{FIELD_LABELS.get(key as keyof CharacterDraft) ?? key}</p>
+                      <textarea
+                        className="field min-h-[64px]"
+                        value={value ?? ""}
+                        onChange={(event) =>
+                          setPendingPatch((current) =>
+                            current ? { ...current, patch: { ...current.patch, [key]: event.target.value } } : current,
+                          )
+                        }
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
 
             <div className="mt-4 flex flex-wrap gap-2">
               <button className="btn-ghost" disabled={busy !== null} onClick={() => improve(character, "improve")}>
