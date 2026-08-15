@@ -1,0 +1,118 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String    @id @default(cuid())
+  email     String    @unique
+  createdAt DateTime  @default(now())
+  projects  Project[]
+}
+
+model Project {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title        String
+  genre        String   @default("")
+  language     String   @default("English")
+  format       String   @default("Feature Film")
+  duration     Int      @default(90)
+  tone         String   @default("")
+  reference    String   @default("")
+  originalIdea String   @default("")
+  logline      String   @default("")
+  premise      String   @default("")
+  theme        String   @default("")
+  conflict     String   @default("")
+  storyQuestions String @default("")
+  structure    String   @default("3-act")
+  ideaApproved Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  characters Character[]
+  beats      StoryBeat[]
+  scenes     Scene[]
+  versions   Version[]
+}
+
+model Character {
+  id            String   @id @default(cuid())
+  projectId     String
+  project       Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name          String
+  age           String   @default("")
+  role          String   @default("")
+  occupation    String   @default("")
+  personality   String   @default("")
+  appearance    String   @default("")
+  background    String   @default("")
+  goal          String   @default("")
+  motivation    String   @default("")
+  fear          String   @default("")
+  flaw          String   @default("")
+  strength      String   @default("")
+  secret        String   @default("")
+  relationship  String   @default("")
+  characterArc  String   @default("")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model StoryBeat {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  act         String   @default("ACT I")
+  order       Int      @default(0)
+  title       String
+  description String   @default("")
+  characters  String   @default("")
+  location    String   @default("")
+  purpose     String   @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  scenes Scene[]
+}
+
+model Scene {
+  id                String     @id @default(cuid())
+  projectId         String
+  project           Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  beatId            String?
+  beat              StoryBeat? @relation(fields: [beatId], references: [id], onDelete: SetNull)
+  sceneNumber       Int        @default(1)
+  intExt            String     @default("INT.")
+  heading           String     @default("")
+  location          String     @default("")
+  timeOfDay         String     @default("NIGHT")
+  characters        String     @default("")
+  purpose           String     @default("")
+  conflict          String     @default("")
+  emotionalObjective String    @default("")
+  summary           String     @default("")
+  screenplayContent String     @default("")
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  versions Version[]
+}
+
+model Version {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sceneId   String?
+  scene     Scene?   @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+  kind      String   @default("scene")
+  label     String   @default("")
+  content   String
+  createdAt DateTime @default(now())
+}
