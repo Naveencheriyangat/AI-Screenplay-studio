@@ -42,6 +42,24 @@ export const characterSchema = z.object({
   characterArc: z.string().default(""),
 });
 
+export const characterPatchSchema = z.object({
+  name: z.string().min(1).optional(),
+  age: z.string().optional(),
+  role: z.string().optional(),
+  occupation: z.string().optional(),
+  personality: z.string().optional(),
+  appearance: z.string().optional(),
+  background: z.string().optional(),
+  goal: z.string().optional(),
+  motivation: z.string().optional(),
+  fear: z.string().optional(),
+  flaw: z.string().optional(),
+  strength: z.string().optional(),
+  secret: z.string().optional(),
+  relationship: z.string().optional(),
+  characterArc: z.string().optional(),
+});
+
 export const beatSchema = z.object({
   act: z.string().default("ACT I"),
   title: z.string().min(1),
@@ -174,7 +192,7 @@ export function improveCharacter(
     `${instruction} Only return the fields you changed. Return {"character": Partial<Character>}.`,
     context,
     { ...character, mode },
-    z.object({ character: characterSchema.partial() }),
+    z.object({ character: characterPatchSchema }),
   ).then((r) => r.character);
 }
 
